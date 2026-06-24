@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ProgramPulse — Program Health at a Glance</title>
+<style>
+  :root {
+    --ink: #0E1726;
+    --slate: #5A6B82;
+    --mist: #8A99AE;
+    --paper: #F7F8FA;
+    --card: #FFFFFF;
+    --line: #E4E8EF;
+    --pulse: #1FB6A6;       /* signature teal */
+    --pulse-deep: #0E7E73;
+    --green: #2FA86A;
+    --amber: #E0A92E;
+    --red: #D9544D;
+    --green-bg: #E8F6EE;
+    --amber-bg: #FBF2DC;
+    --red-bg: #FBE8E7;
+    --shadow: 0 1px 2px rgba(14,23,38,.04), 0 4px 16px rgba(14,23,38,.05);
+    --mono: 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .head-inner { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; max-width: 1180px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .logo-mark { width: 34px; height: 34px; flex: none; }
+  .brand h1 { font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+  .brand .tag { font-size: 11px; color: var(--mist); letter-spacing: .14em; text-transform: uppercase; font-weight: 600; margin-top: 1px; }
+  .head-actions { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    padding: 9px 15px; border-radius: 8px; cursor: pointer; transition: .15s;
+  }
+  .btn:hover { border-color: var(--mist); }
+  .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn.primary:hover { background: #1d2a40; }
+  .btn:focus-visible { outline: 2px solid var(--pulse); outline-offset: 2px; }
+
+  /* Pulse banner */
+  .pulse-banner {
+    background: linear-gradient(180deg, #fff, var(--paper));
+    border-bottom: 1px solid var(--line);
+    padding: 30px 0 26px;
+  }
+  .pulse-row { display: flex; gap: 16px; align-items: stretch; flex-wrap: wrap; }
+  .pulse-summary {
+    flex: 1 1 340px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px 22px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .pulse-summary::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--pulse);
+  }
+  .pulse-summary .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--pulse-deep); font-weight: 700; display: flex; align-items: center; gap: 7px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pulse); animation: blip 2s infinite; }
+  @keyframes blip { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+  .pulse-summary p { margin-top: 9px; font-size: 15px; color: var(--ink); line-height: 1.55; }
+  .pulse-summary .hint { margin-top: 10px; font-size: 12px; color: var(--mist); }
+
+  .stat-card {
+    flex: 1 1 130px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-card .num { font-size: 30px; font-weight: 760; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .stat-card .lbl { font-size: 12px; color: var(--slate); font-weight: 500; }
+  .num.g{color:var(--green)} .num.a{color:var(--amber)} .num.r{color:var(--red)} .num.t{color:var(--pulse-deep)}
+
+  /* Toolbar */
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 26px 0 14px; flex-wrap: wrap; }
+  .toolbar h2 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+  .filters { display: flex; gap: 6px; }
+  .chip {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px;
+    border: 1px solid var(--line); background: var(--card); cursor: pointer; color: var(--slate); transition: .15s;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--pulse); outline-offset: 2px; }
+
+  /* Program grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; padding-bottom: 40px; }
+  .prog {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 18px 16px; box-shadow: var(--shadow); transition: .18s; cursor: pointer;
+  }
+  .prog:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(14,23,38,.09); border-color: #d6dce6; }
+  .prog-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .prog-name { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .prog-owner { font-size: 12px; color: var(--mist); margin-top: 2px; }
+  .rag {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    padding: 4px 10px; border-radius: 6px; white-space: nowrap; flex: none;
+  }
+  .rag.green{background:var(--green-bg);color:var(--green)}
+  .rag.amber{background:var(--amber-bg);color:#9a7415}
+  .rag.red{background:var(--red-bg);color:var(--red)}
+
+  .prog-meta { display: flex; gap: 18px; margin-top: 15px; }
+  .prog-meta .m .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .prog-meta .m .k { font-size: 11px; color: var(--mist); }
+
+  .bar { margin-top: 14px; }
+  .bar-track { height: 7px; background: var(--paper); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .bar-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--slate); margin-bottom: 5px; }
+
+  .prog-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .next { font-size: 12px; color: var(--slate); }
+  .next b { color: var(--ink); font-weight: 600; }
+  .risk-flag { font-size: 11px; font-weight: 700; color: var(--red); display: flex; align-items: center; gap: 4px; }
+
+  /* Modal */
+  .scrim { position: fixed; inset: 0; background: rgba(14,23,38,.45); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .scrim.open { display: flex; }
+  .modal { background: var(--card); border-radius: 16px; max-width: 540px; width: 100%; max-height: 88vh; overflow: auto; box-shadow: 0 20px 60px rgba(14,23,38,.3); }
+  .modal-head { padding: 22px 24px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-start; }
+  .modal-body { padding: 20px 24px 24px; }
+  .field { margin-bottom: 15px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--slate); margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; font-family: var(--sans); font-size: 14px; color: var(--ink);
+    padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--pulse); outline-offset: 0; border-color: var(--pulse); }
+  .field-row { display: flex; gap: 12px; }
+  .field-row .field { flex: 1; }
+  .x { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--mist); line-height: 1; }
+  .modal-detail-row { display: flex; gap: 22px; margin: 14px 0; }
+  .modal-detail-row .d .v { font-size: 22px; font-weight: 760; font-variant-numeric: tabular-nums; }
+  .modal-detail-row .d .k { font-size: 11px; color: var(--mist); }
+  .risk-list { margin-top: 8px; }
+  .risk-item { display: flex; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .risk-sev { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; height: fit-content; text-transform: uppercase; }
+  .empty { text-align: center; padding: 60px 20px; color: var(--mist); }
+  .empty svg { opacity: .4; margin-bottom: 12px; }
+  footer { border-top: 1px solid var(--line); padding: 22px 0; font-size: 12px; color: var(--mist); text-align: center; }
+  footer a { color: var(--pulse-deep); text-decoration: none; font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <div class="brand">
+      <svg class="logo-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect width="40" height="40" rx="9" fill="#0E1726"/>
+        <path d="M6 21 H13 L16 13 L21 27 L24 20 H34" stroke="#1FB6A6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1>ProgramPulse</h1>
+        <div class="tag">Portfolio Health Monitor</div>
+      </div>
+    </div>
+    <div class="head-actions">
+      <button class="btn" id="seedBtn">Load sample portfolio</button>
+      <button class="btn primary" id="addBtn">+ Add program</button>
+    </div>
+  </div>
+</header>
+
+<section class="pulse-banner">
+  <div class="wrap">
+    <div class="pulse-row">
+      <div class="pulse-summary">
+        <div class="eyebrow"><span class="live-dot"></span> Portfolio pulse</div>
+        <p id="pulseText">Loading your portfolio…</p>
+        <div class="hint" id="pulseHint"></div>
+      </div>
+      <div class="stat-card"><span class="num t" id="sTotal">0</span><span class="lbl">Active programs</span></div>
+      <div class="stat-card"><span class="num g" id="sGreen">0</span><span class="lbl">On track</span></div>
+      <div class="stat-card"><span class="num a" id="sAmber">0</span><span class="lbl">At risk</span></div>
+      <div class="stat-card"><span class="num r" id="sRed">0</span><span class="lbl">Off track</span></div>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+  <div class="toolbar">
+    <h2>Programs</h2>
+    <div class="filters" role="group" aria-label="Filter by status">
+      <button class="chip" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" data-f="green" aria-pressed="false">On track</button>
+      <button class="chip" data-f="amber" aria-pressed="false">At risk</button>
+      <button class="chip" data-f="red" aria-pressed="false">Off track</button>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  ProgramPulse — built as a portfolio piece by an AI-driven program manager.
+  Data is stored privately to your browser session.
+</footer>
+
+<!-- Add/Edit modal -->
+<div class="scrim" id="formScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <div class="modal-head">
+      <div><strong id="formTitle" style="font-size:17px">Add program</strong></div>
+      <button class="x" id="formClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="fName">Program name</label><input id="fName" placeholder="e.g. Stak64 Connector Launch" /></div>
+      <div class="field-row">
+        <div class="field"><label for="fOwner">Owner</label><input id="fOwner" placeholder="e.g. V. Selvakumar" /></div>
+        <div class="field"><label for="fStatus">Status</label>
+          <select id="fStatus"><option value="green">On track</option><option value="amber">At risk</option><option value="red">Off track</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="fProgress">Progress %</label><input id="fProgress" type="number" min="0" max="100" value="0" /></div>
+        <div class="field"><label for="fOpenRisks">Open risks</label><input id="fOpenRisks" type="number" min="0" value="0" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="fMilestone">Next milestone</label><input id="fMilestone" placeholder="e.g. Design freeze" /></div>
+        <div class="field"><label for="fDue">Due date</label><input id="fDue" type="date" /></div>
+      </div>
+      <div class="field"><label for="fNote">Top risk / note (optional)</label><textarea id="fNote" rows="2" placeholder="e.g. Tooling homeline vs. cost decision pending"></textarea></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+        <button class="btn" id="formDelete" style="margin-right:auto;color:var(--red);display:none">Delete</button>
+        <button class="btn" id="formCancel">Cancel</button>
+        <button class="btn primary" id="formSave">Save program</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="scrim" id="detailScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dName">
+    <div class="modal-head">
+      <div>
+        <strong id="dName" style="font-size:18px"></strong>
+        <div id="dOwner" style="font-size:12px;color:var(--mist);margin-top:2px"></div>
+      </div>
+      <button class="x" id="detailClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <span id="dRag" class="rag"></span>
+      <div class="modal-detail-row">
+        <div class="d"><div class="v" id="dProgress"></div><div class="k">Complete</div></div>
+        <div class="d"><div class="v" id="dRisks"></div><div class="k">Open risks</div></div>
+        <div class="d"><div class="v" id="dDays"></div><div class="k">Days to milestone</div></div>
+      </div>
+      <div style="font-size:13px;color:var(--slate);margin-bottom:4px"><b style="color:var(--ink)">Next milestone:</b> <span id="dMilestone"></span></div>
+      <div id="dNoteWrap" style="margin-top:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--slate);margin-bottom:5px">Top risk / note</div>
+        <div id="dNote" style="font-size:13px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:11px 13px"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+        <button class="btn" id="dEdit">Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = 'programpulse:v1';
+let programs = [];
+let filter = 'all';
+let editingId = null;
+
+const $ = s => document.querySelector(s);
+const fmtDate = d => d ? new Date(d+'T00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—';
+const daysTo = d => d ? Math.ceil((new Date(d+'T00:00') - new Date().setHours(0,0,0,0)) / 864e5) : null;
+
+async function load() {
+  try {
+    const r = await window.storage.get(STORE_KEY);
+    programs = r && r.value ? JSON.parse(r.value) : [];
+  } catch { programs = []; }
+  render();
+}
+async function save() {
+  try { await window.storage.set(STORE_KEY, JSON.stringify(programs)); } catch (e) { console.error(e); }
+  render();
+}
+
+function pulse() {
+  const n = programs.length;
+  const g = programs.filter(p=>p.status==='green').length;
+  const a = programs.filter(p=>p.status==='amber').length;
+  const r = programs.filter(p=>p.status==='red').length;
+  $('#sTotal').textContent=n; $('#sGreen').textContent=g; $('#sAmber').textContent=a; $('#sRed').textContent=r;
+
+  let txt, hint='';
+  if (n===0) { txt='No programs yet. Add one, or load the sample portfolio to see ProgramPulse in action.'; }
+  else {
+    const risks = programs.reduce((s,p)=>s+(+p.openRisks||0),0);
+    const soon = programs.map(p=>({p,d:daysTo(p.due)})).filter(x=>x.d!==null&&x.d>=0).sort((x,y)=>x.d-y.d)[0];
+    const avg = Math.round(programs.reduce((s,p)=>s+(+p.progress||0),0)/n);
+    if (r>0) txt = `${r} program${r>1?'s':''} off track and need attention now. Portfolio is ${avg}% complete with ${risks} open risk${risks!==1?'s':''} across ${n} program${n>1?'s':''}.`;
+    else if (a>0) txt = `Portfolio is mostly healthy — ${g} on track, ${a} at risk. ${avg}% complete with ${risks} open risk${risks!==1?'s':''} to watch.`;
+    else txt = `All ${n} program${n>1?'s':''} on track. Portfolio is ${avg}% complete with ${risks} open risk${risks!==1?'s':''}. Clean board.`;
+    if (soon) hint = `Nearest milestone: ${soon.p.milestone||'—'} for ${soon.p.name} ${soon.d===0?'is due today':'in '+soon.d+' day'+(soon.d!==1?'s':'')}.`;
+  }
+  $('#pulseText').textContent = txt;
+  $('#pulseHint').textContent = hint;
+}
+
+function render() {
+  pulse();
+  const grid = $('#grid');
+  const list = programs.filter(p=>filter==='all'||p.status===filter);
+  if (list.length===0) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+      <div>${programs.length===0?'Your portfolio is empty.':'No programs match this filter.'}</div>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = list.map(p => {
+    const d = daysTo(p.due);
+    const ragTxt = {green:'On track',amber:'At risk',red:'Off track'}[p.status];
+    const fill = {green:'var(--green)',amber:'var(--amber)',red:'var(--red)'}[p.status];
+    return `<article class="prog" data-id="${p.id}" tabindex="0">
+      <div class="prog-top">
+        <div><div class="prog-name">${esc(p.name)}</div><div class="prog-owner">${esc(p.owner||'Unassigned')}</div></div>
+        <span class="rag ${p.status}">${ragTxt}</span>
+      </div>
+      <div class="bar">
+        <div class="bar-row"><span>Progress</span><span>${+p.progress||0}%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,+p.progress||0)}%;background:${fill}"></div></div>
+      </div>
+      <div class="prog-foot">
+        <div class="next"><b>${esc(p.milestone||'—')}</b> · ${fmtDate(p.due)}${d!==null?` (${d<0?'overdue':d+'d'})`:''}</div>
+        ${(+p.openRisks>0)?`<span class="risk-flag">▲ ${p.openRisks} risk${p.openRisks>1?'s':''}</span>`:''}
+      </div>
+    </article>`;
+  }).join('');
+  grid.querySelectorAll('.prog').forEach(el=>{
+    el.onclick = ()=>openDetail(el.dataset.id);
+    el.onkeydown = e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();openDetail(el.dataset.id);} };
+  });
+}
+function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* form */
+function openForm(id){
+  editingId = id || null;
+  const p = id ? programs.find(x=>x.id===id) : null;
+  $('#formTitle').textContent = p ? 'Edit program' : 'Add program';
+  $('#fName').value=p?p.name:''; $('#fOwner').value=p?p.owner||'':'';
+  $('#fStatus').value=p?p.status:'green'; $('#fProgress').value=p?p.progress||0:0;
+  $('#fOpenRisks').value=p?p.openRisks||0:0; $('#fMilestone').value=p?p.milestone||'':'';
+  $('#fDue').value=p?p.due||'':''; $('#fNote').value=p?p.note||'':'';
+  $('#formDelete').style.display = p ? 'block' : 'none';
+  $('#formScrim').classList.add('open'); $('#fName').focus();
+}
+function closeForm(){ $('#formScrim').classList.remove('open'); }
+async function saveForm(){
+  const name=$('#fName').value.trim();
+  if(!name){ $('#fName').focus(); return; }
+  const data={ name, owner:$('#fOwner').value.trim(), status:$('#fStatus').value,
+    progress:Math.max(0,Math.min(100,+$('#fProgress').value||0)), openRisks:Math.max(0,+$('#fOpenRisks').value||0),
+    milestone:$('#fMilestone').value.trim(), due:$('#fDue').value, note:$('#fNote').value.trim() };
+  if(editingId){ programs = programs.map(p=>p.id===editingId?{...p,...data}:p); }
+  else { programs.push({id:'p'+Date.now(),...data}); }
+  closeForm(); await save();
+}
+async function delProg(){ if(editingId){ programs=programs.filter(p=>p.id!==editingId); closeForm(); await save(); } }
+
+/* detail */
+function openDetail(id){
+  const p=programs.find(x=>x.id===id); if(!p)return;
+  $('#dName').textContent=p.name; $('#dOwner').textContent=p.owner||'Unassigned';
+  const rag=$('#dRag'); rag.className='rag '+p.status;
+  rag.textContent={green:'On track',amber:'At risk',red:'Off track'}[p.status];
+  $('#dProgress').textContent=(+p.progress||0)+'%'; $('#dRisks').textContent=+p.openRisks||0;
+  const d=daysTo(p.due); $('#dDays').textContent=d===null?'—':(d<0?d+' (late)':d);
+  $('#dMilestone').textContent=(p.milestone||'—')+' · '+fmtDate(p.due);
+  $('#dNoteWrap').style.display=p.note?'block':'none'; $('#dNote').textContent=p.note||'';
+  $('#dEdit').onclick=()=>{ closeDetail(); openForm(id); };
+  $('#detailScrim').classList.add('open');
+}
+function closeDetail(){ $('#detailScrim').classList.remove('open'); }
+
+/* filters */
+document.querySelectorAll('.chip').forEach(c=>{
+  c.onclick=()=>{ filter=c.dataset.f;
+    document.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed', x===c));
+    render(); };
+});
+
+/* sample data — a PM's real-feeling portfolio */
+async function seed(){
+  programs = [
+    {id:'p1',name:'Stak64 Connector Launch',owner:'V. Selvakumar',status:'amber',progress:62,openRisks:2,milestone:'Tooling decision',due:offset(9),note:'NA tooling homeline required by Ops, but Procurement flags high cost impact. Decision pending with Eckerle by EOW.'},
+    {id:'p2',name:'ADAS Camera Visualization',owner:'Eng — Lighting',status:'green',progress:78,openRisks:0,milestone:'DV test complete',due:offset(21),note:''},
+    {id:'p3',name:'Novares OSH Software Change',owner:'V. Selvakumar',status:'red',progress:34,openRisks:4,milestone:'Customer CBD sign-off',due:offset(-3),note:'Haptic SW scope still undefined; CBD blocked pending customer input. Milestone now overdue.'},
+    {id:'p4',name:'Tesla A431 Build',owner:'Operations',status:'green',progress:91,openRisks:1,milestone:'Production ramp',due:offset(14),note:'On schedule. Carrier drawing rev aligned to Rev3 after supplier escalation closed.'},
+    {id:'p5',name:'NSK Quote — NCPM-99',owner:'V. Selvakumar',status:'amber',progress:48,openRisks:1,milestone:'PO receipt',due:offset(6),note:'Quote issued at $39,104. Awaiting NSK PO to kick off; selective-soldering piece-price impact flagged.'},
+    {id:'p6',name:'Q3 Capacity Forecast',owner:'PMO',status:'green',progress:55,openRisks:0,milestone:'Forecast review',due:offset(11),note:''},
+  ];
+  await save();
+}
+function offset(days){ const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+
+/* wire up */
+$('#addBtn').onclick=()=>openForm();
+$('#seedBtn').onclick=seed;
+$('#formClose').onclick=closeForm; $('#formCancel').onclick=closeForm;
+$('#formSave').onclick=saveForm; $('#formDelete').onclick=delProg;
+$('#detailClose').onclick=closeDetail;
+[ 'formScrim','detailScrim'].forEach(id=>{ $('#'+id).onclick=e=>{ if(e.target.id===id) e.target.classList.remove('open'); }; });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeForm(); closeDetail(); } });
+
+load();
+</script>
+</body>
+</html>
